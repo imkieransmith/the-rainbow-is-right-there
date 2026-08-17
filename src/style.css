@@ -1,0 +1,411 @@
+/* ============================================================
+   Layout shell
+   The game is one full-viewport canvas with HTML chrome floating
+   over it. Nothing scrolls except the insides of dialogs.
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #91dcff;
+}
+#game { height: 100%; height: 100dvh; }
+#scene { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#c {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  image-rendering: pixelated;
+}
+
+/* Everything below is built from two small scales rather than bespoke
+   numbers per element: spacing steps of 4px up to 28px, and a type ramp of
+   9 / 11 / 13 / 15 / 18 / 22 / 26px. Sticking to them keeps the panels
+   looking like one designed system, and — because a compressor pays for
+   every *distinct* value it has to store — it is also why the whole
+   stylesheet fits in a fraction of the byte budget a free-form one needs. */
+:root {
+  --paper: #fff8e8;
+  --ink: #46372f;
+  --muted: #887562;
+  --purple: #6750c4;
+  --purple-dark: #4d3aa4;
+  --pink: #d85c7c;
+  --gold: #ffe16b;
+  --line: #e4d7c1;
+  --quick: .15s ease;
+  --font: system-ui, sans-serif;
+  --pad: 20px;
+}
+
+/* ============================================================
+   Buttons
+   Every button in the game is the same flat, borderless bunting
+   shape — only its size, colour and clip polygon differ. The
+   shared reset therefore lives on the bare element selector, and
+   each button below only states what makes it different.
+   ============================================================ */
+button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: var(--purple);
+  color: #fff;
+  font: 700 13px/1 var(--font);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter var(--quick),opacity var(--quick),color var(--quick),display .15s allow-discrete;
+}
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+button:not(:disabled):not([aria-disabled="true"]):hover { filter: brightness(1.08); }
+button:not(:disabled):not([aria-disabled="true"]):active { filter: brightness(.92); }
+/* Two clip polygons cover every button: a pennant with a notched right
+   edge, and the hexagon used by the small round-ish icon controls. */
+#hud-upgrade, .buy button, .choice button {
+  clip-path: polygon(0 0,100% 0,calc(100% - 14px) 50%,100% 100%,0 100%);
+}
+.ctrl button, #upgrade-close {
+  clip-path: polygon(25% 7%,75% 7%,100% 50%,75% 93%,25% 93%,0 50%);
+}
+
+/* Gold and Spend Gold join into one compact bottom ribbon. */
+.play-controls {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 15px;
+  max-width: calc(100% - 30px);
+  height: 44px;
+  display: flex;
+  transform: translateX(-50%);
+}
+#hud {
+  padding: 0 15px 0 25px;
+  margin-right: 5px;
+  clip-path: polygon(0 0,100% 0,100% 100%,0 100%,10px 50%);
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #d0953f;
+  font-family: var(--font);
+  pointer-events: none;
+  transition: opacity var(--quick),display .15s allow-discrete;
+}
+#hud[hidden], #hud-upgrade[hidden] { display: none; opacity: 0; }
+@starting-style { #hud:not([hidden]), #hud-upgrade:not([hidden]) { opacity: 0; } }
+#hud b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#hud-upgrade {
+  min-width: 0;
+  padding: 0 25px 0 15px;
+  flex: 1;
+  font-size: 16px;
+  background: var(--pink);
+  white-space: nowrap;
+}
+/* Mute and menu controls, pinned to the top-right corner of the scene. */
+.ctrl { position: absolute; z-index: 5; top: 12px; right: 12px; display: flex; gap: 4px; opacity: .8; transition: opacity var(--quick); }
+.ctrl:hover, .ctrl:focus-within { opacity: 1; }
+.ctrl button { width: 36px; height: 36px; font-size: 18px; }
+#game-volume svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+#game-volume svg > path:first-child { fill: currentColor; stroke: none; }
+#game-volume .voff,
+#game-volume[aria-pressed="true"] .von { display: none; }
+#game-volume[aria-pressed="true"] .voff { display: block; }
+
+/* ============================================================
+   Panels
+   Both panels (upgrades and stubbornness) are the same sheet of
+   paper: a full-bleed purple header band, a scrolling body, and a
+   bunting edge cut into the bottom. Only their widths differ, so
+   the whole look is defined once here.
+   ============================================================ */
+.panel[open] {
+  width: min(860px, 100vw - 24px);
+  height: fit-content;
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  background: var(--paper);
+  box-shadow: 0 12px 40px #2c214b66;
+  color: var(--ink);
+  font-family: var(--font);
+}
+#stubborn-menu[open] { width: min(760px, 100vw - 24px); }
+/* The paper's torn bottom edge: one repeating conic wedge, so the shape
+   costs a single gradient rather than a border image. */
+.panel::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -12px;
+  left: 0;
+  height: 12px;
+  background: conic-gradient(from -63.5deg at 50% 100%,var(--paper) 127deg,transparent 0) 0 0/52px 12px repeat-x;
+  pointer-events: none;
+}
+
+/* One header band serves both panels. The upgrade header is a grid because it
+   has to fit a close button on the end; the stubbornness one is a plain flex
+   row, which is the only difference between them. */
+.uhead, .shead {
+  min-height: 104px;
+  flex: none;
+  padding: var(--pad);
+  align-items: center;
+  gap: 24px;
+  background: var(--purple);
+  color: #fff;
+}
+.uhead { display: grid; grid-template-columns: 1fr auto 44px; }
+.shead { display: flex; justify-content: space-between; }
+.uhead h2, .shead h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Both headers end in a stacked figure: a gold number over a small caps
+   label. The stubbornness panel shows one, the upgrade panel two. */
+.ustats { display: flex; gap: 24px; }
+.ustats > span, .tries { display: flex; flex: none; flex-direction: column; min-width: 60px; }
+.ustats b, .tries b, #hud b {
+  color: var(--gold);
+  font-size: 18px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ustats small, .tries small, #hud small {
+  margin-top: 4px;
+  color: #c8bdf5;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+#hud b { color: #f8efe3; }
+#hud small { color: #eed9ba; }
+.who { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.who > div { min-width: 0; }
+/* A round portrait cropped from the unicorn's own gallop sheet. --sheet is set
+   by the game at startup: the sprite is painted from text, so there is no
+   image file to point at. The offsets frame her head at roughly 6.5x. */
+.face {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+  background: #c8bdf5 var(--sheet) -59px -20px/593px 119px no-repeat;
+  box-shadow: 0 0 0 3px var(--paper);
+  image-rendering: pixelated;
+}
+.bio { display: block; margin-top: 4px; color: #c8bdf5; font-size: 13px; line-height: 1.25; }
+/* Status line under the stubbornness choices; collapses completely when empty
+   so it never reserves blank space above the controls it sits under. */
+#stubborn-status { min-height: 20px; margin: 0 var(--pad) 16px; color: var(--pink); font: 700 11px/1.4 var(--font); text-align: center; }
+#stubborn-status:empty { display: none; }
+.credit { flex: none; padding: 10px 10px 30px 10px; color: var(--muted); font: 11px/1.4 var(--font); text-align: center; opacity:0.66 }
+.credit a { color: inherit; }
+.credit a:hover { color: var(--purple); }
+
+/* ============================================================
+   Modal open/close animation
+   Both modal dialogs fade and lift the same way. @starting-style
+   supplies the "before open" values so the entry transition runs
+   without JS, and .shut holds the element in the top layer long
+   enough for the exit transition to finish.
+   ============================================================ */
+#upgrade-menu, #stubborn-menu {
+  opacity: 0;
+  transform: translateY(6px) scale(.98);
+  transition: opacity var(--quick),transform var(--quick);
+}
+#upgrade-menu:not([open]), #stubborn-menu:not([open]) { display: none; }
+#upgrade-menu[open], #stubborn-menu[open] { opacity: 1; transform: none; }
+#upgrade-menu::backdrop, #stubborn-menu::backdrop {
+  opacity: 0;
+  background: #26324d99;
+  transition: opacity var(--quick);
+}
+#upgrade-menu[open]::backdrop, #stubborn-menu[open]::backdrop { opacity: 1; }
+#upgrade-menu.shut, #stubborn-menu.shut { opacity: 0; transform: translateY(6px) scale(.98); }
+#upgrade-menu.shut::backdrop, #stubborn-menu.shut::backdrop { opacity: 0; }
+@starting-style {
+  #upgrade-menu[open], #stubborn-menu[open] { opacity: 0; transform: translateY(6px) scale(.98); }
+  #upgrade-menu[open]::backdrop, #stubborn-menu[open]::backdrop { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  button, #hud, .ctrl, #upgrade-menu, #stubborn-menu, #upgrade-scroll-cue,
+  #upgrade-menu::backdrop, #stubborn-menu::backdrop { transition: none; }
+  #upgrade-more svg { animation: none; fill: var(--pink); }
+  #upgrade-more svg:last-child { fill: var(--gold); }
+}
+
+/* ============================================================
+   Upgrade panel
+   ============================================================ */
+#upgrade-close { width: 44px; height: 44px; padding: 0 0 4px; background: var(--paper); color: var(--purple); font-size: 26px; }
+#upgrade-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  /* Keep the final upgrade clear of the paper bunting below the dialog. */
+  padding: 0 var(--pad) 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+/* A fading band with a nudge to scroll, hidden once the list bottoms out.
+   allow-discrete lets `display` participate in the fade both ways. */
+#upgrade-scroll-cue {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 24px;
+  background: linear-gradient(transparent,var(--paper) 50%);
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity var(--quick),display .15s allow-discrete;
+}
+#upgrade-scroll-cue[hidden] { display: none; opacity: 0; }
+@starting-style { #upgrade-scroll-cue:not([hidden]) { opacity: 0; } }
+#upgrade-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  pointer-events: auto;
+}
+#upgrade-more svg { width: 13px; height: 13px; animation: sparkle 4s ease-in-out infinite; }
+#upgrade-more svg:last-child { animation-delay: -2s; }
+@keyframes sparkle {
+  0%,100% { fill: var(--pink); }
+  33% { fill: var(--purple); }
+  66% { fill: var(--gold); }
+}
+.row {
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+/* Small blank pennants retain the colour coding without shipping icons. */
+.flag {
+  width: 28px;
+  height: 32px;
+  align-self: start;
+  background: #d85c7c;
+  clip-path: polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);
+}
+.sparkle .flag, .sparkle .lit { background: #efa941; }
+.gallop .flag, .gallop .lit { background: #5b91ca; }
+.catch .flag { background: var(--purple); }
+.value .flag { background: #d0953f; }
+.chase .flag { background: #3f73aa; }
+.catch .effect { white-space: normal; }
+.copy { min-width: 0; }
+.title { display: flex; align-items: baseline; gap: 12px; }
+.title strong { font-size: 18px; line-height: 1.2; }
+.copy small { display: block; margin: 4px 0; color: var(--muted); font-size: 11px; line-height: 1.25; }
+.copy .desc { margin: 4px 0 8px; font-size: 13px; }
+.copy .effect { display: flex; align-items: baseline; gap: 4px; margin: 0 0 10px; white-space: nowrap; }
+.effect b, .scopy .now { color: var(--ink); font-weight: 500; }
+.effect i, .scopy small i { font-style: normal; }
+.effect strong, .scopy .next { color: #bb4166; }
+/* Ten notched pips per upgrade, filled from the left as levels are bought. */
+.pips { display: flex; gap: 4px; }
+.pip {
+  width: 20px;
+  height: 12px;
+  background: #ead8d3;
+  clip-path: polygon(0 0,100% 0,100% 100%,50% 75%,0 100%);
+}
+.lit { background: #d85c7c; }
+.buy { min-width: 120px; display: grid; justify-items: end; gap: 8px; }
+.cost {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* <b> would resolve to 900 against the row's 800, so the value is pinned. */
+.costlabel { font-size: 11px; font-weight: 400; }
+.costvalue { font-weight: 800; }
+.buy button { width: 120px; height: 36px; padding: 0 16px 0 8px; background: var(--pink); }
+.row.off .buy button { background: #cfc3ac; color: var(--paper); cursor: not-allowed; }
+
+/* ============================================================
+   Stubbornness panel
+   Permanent choices reuse the compact upgrade-row language.
+   ============================================================ */
+.sbody { flex: 0 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.intro { padding: var(--pad) var(--pad) 0; text-align: center; }
+.intro h2 { margin: 0 0 8px; font-size: 22px; }
+.intro p { max-width: 560px; margin: 0 auto 8px; color: var(--muted); font-size: 13px; }
+#stubborn-list { padding: 16px var(--pad) 24px; display: grid; }
+.choice {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) 84px;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  line-height: normal;
+  text-align: left;
+}
+.choice button { width: 84px; height: 36px; padding-right: 8px; background: var(--pink); }
+.choice button:disabled { cursor: not-allowed; opacity: .45; }
+.scopy { min-width: 0; }
+.scopy > strong { display: block; font-size: 18px; }
+.scopy > span { display: block; margin: 8px 0 16px; font-size: 13px; line-height: 1.35; }
+.scopy small { display: flex; align-items: baseline; gap: 4px; color: var(--muted); font-size: 13px; }
+.scopy small b { font-weight: 500; }
+
+/* ============================================================
+   Responsive steps
+   600px folds every two-column layout into one; 280px is the
+   "watch-sized window" pass. Because the base sizes above already
+   come from one small scale, each step only has to restate the
+   handful of values that genuinely have to change.
+   ============================================================ */
+@media (max-width: 600px) {
+  :root { --pad: 16px; }
+  .uhead { grid-template-columns: 1fr 44px; }
+  .ustats { grid-column: 1/-1; grid-row: 2; }
+  .row { grid-template-columns: 28px minmax(0,1fr); }
+  .buy { grid-column: 2; min-width: 0; display: flex; align-items: center; justify-content: space-between; }
+}
+@media (max-width: 280px) {
+  :root { --pad: 12px; }
+  .face { width: 40px; height: 40px; }
+  .uhead h2, .shead h2 { font-size: 18px; }
+  .pips { gap: 2px; }
+  .pip { width: 9px; height: 7px; }
+  .buy { grid-column: 1/-1; }
+  .buy button { width: 96px; }
+}

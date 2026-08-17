@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Rainbow Is Right There: An Epic Tale of Galloping</title>
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div id="game"><main id="scene">
+<canvas id="c"></canvas>
+<div class="play-controls">
+<div id="hud" role="status" hidden><b id="hud-money"></b><small aria-hidden="true">GOLD</small></div>
+<button id="hud-upgrade" type="button" aria-label="Open upgrades" hidden aria-expanded="false" aria-controls="upgrade-menu">Spend Gold</button>
+</div>
+<div class="ctrl">
+  <button id="game-volume" type="button" aria-label="Mute game" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8h3l4-4v12l-4-4H3z"/><path class="von" d="M13 7q3 3 0 6M15 5q5 5 0 10"/><path class="voff" d="M13 8l4 4m0-4l-4 4"/></svg></button>
+  <button id="game-new" type="button" aria-label="Start a new game">↺</button>
+</div>
+<dialog id="upgrade-menu" class="panel" aria-labelledby="upgrade-title">
+  <header class="uhead">
+    <div class="who"><span class="face" aria-hidden="true"></span><div><h2 id="upgrade-title"></h2><span id="upgrade-bio" class="bio"></span></div></div>
+    <div class="ustats">
+      <span><b id="upgrade-money"></b><small>GOLD</small></span>
+      <span><b id="upgrade-chase"></b><small>CHASE</small></span>
+    </div>
+    <button id="upgrade-close" type="button" aria-label="Close upgrades">×</button>
+  </header>
+  <div id="upgrade-list">
+    <div class="row mane">
+      <span class="flag" aria-hidden="true"></span>
+      <div class="copy"><div class="title"><strong>Shimmering Mane</strong></div><small class="desc">Dazzle the leprechaun so he drops gold more often.</small><small class="effect"><span>Gold drops every ·</span><b class="now"></b><i aria-hidden="true">→</i><strong class="next"></strong></small><span class="pips" role="img" aria-label="Level 0 of 10"><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i><i class="pip" aria-hidden="true"></i></span></div>
+      <div class="buy"><span class="cost"><span class="costlabel">Cost ·</span> <b class="costvalue"></b></span><button type="button" data-up="mane">Upgrade</button></div>
+    </div>
+    <div class="row catch">
+      <span class="flag" aria-hidden="true"></span>
+      <div class="copy"><div class="title"><strong>Catch the Rainbow</strong></div><small class="desc">Make the final leap to reach the rainbow and get the pot of gold.</small><small id="catch-requirement" class="effect"></small></div>
+      <div class="buy"><span class="cost"><span class="costlabel">Cost ·</span> <b class="costvalue">1,000 gold</b></span><button id="catch-rainbow" type="button" aria-disabled="true"></button></div>
+    </div>
+  </div>
+  <div id="upgrade-scroll-cue" hidden><button id="upgrade-more" type="button" aria-controls="upgrade-list"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/></svg> Scroll for more magic <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/></svg></button></div>
+  <footer class="credit">Made with magic and sparkles by <a href="https://kieransmith.me/" target="_blank" rel="noopener">Kieran Smith</a> for <a href="https://js13kgames.com/2026/" target="_blank" rel="noopener">JS13K 2026</a>.</footer>
+</dialog>
+<dialog id="stubborn-menu" class="panel" aria-labelledby="stubborn-title" aria-describedby="stubborn-description">
+  <header class="shead">
+    <div class="who"><span class="face" aria-hidden="true"></span><div><h2 id="stubborn-profile-title"></h2><span id="stubborn-profile-bio" class="bio"></span></div></div>
+    <div class="tries"><b id="stubborn-catches"></b><small>ATTEMPTS</small></div>
+  </header>
+  <div class="sbody">
+  <section class="intro"><h2 id="stubborn-title">Radiant Resolve</h2><p id="stubborn-description"></p></section>
+  <div id="stubborn-list">
+    <div class="choice drop">
+      <span class="flag" aria-hidden="true"></span>
+      <span class="scopy"><strong>Weaponised Optimism</strong><span>Gold drops 20% faster in every future run.</span><small>Permanent level <b class="lvl"></b> · <b class="now"></b><i aria-hidden="true">→</i><strong class="next"></strong></small></span>
+      <button type="button" data-stubborn="drop">Choose</button>
+    </div>
+  </div>
+  <p id="stubborn-status" role="status" aria-live="polite"></p>
+  </div>
+</dialog>
+</main></div>
+<script type="module" src="/src/game.js"></script>
+</body>
+</html>
